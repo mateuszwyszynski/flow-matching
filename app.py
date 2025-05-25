@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 st.title("Gaussian Mixture Explorer")
 
 # Sliders for means and stds
-m1 = st.slider("μ₁", -10.0, 10.0, -2.0)
-s1 = st.slider("σ₁",  0.1,   5.0,  1.0)
-m2 = st.slider("μ₂", -10.0, 10.0,  0.0)
-s2 = st.slider("σ₂",  0.1,   5.0,  0.5)
-m3 = st.slider("μ₃", -10.0, 10.0,  3.0)
-s3 = st.slider("σ₃",  0.1,   5.0,  2.0)
+m1 = st.slider("μ₁", -10.0, 10.0, 0.0)
+s1 = st.slider("σ₁",  0.1,   5.0, 1.0)
+m2 = st.slider("μ₂", -10.0, 10.0, 0.0)
+s2 = st.slider("σ₂",  0.1,   5.0, 1.0)
+m3 = st.slider("μ₃", -10.0, 10.0, 0.0)
+s3 = st.slider("σ₃",  0.1,   5.0, 1.0)
 
 # Fixed weights
 w1, w2, w3 = 0.3, 0.4, 0.3
