@@ -12,8 +12,11 @@ s2 = st.sidebar.slider("σ₂",  0.1,   5.0, 1.0)
 m3 = st.sidebar.slider("μ₃", -10.0, 10.0, 0.0)
 s3 = st.sidebar.slider("σ₃",  0.1,   5.0, 1.0)
 
-# Fixed weights
-w1, w2, w3 = 0.3, 0.4, 0.3
+# (optional) you can even put weights in the sidebar
+w1 = st.sidebar.slider("w₁", 0.0, 1.0, 0.33)
+w2 = st.sidebar.slider("w₂", 0.0, 1.0, 0.33)
+w3 = st.sidebar.slider("w₃", 0.0, 1.0, 0.34)
+weights = np.array([w1, w2, w3]) / (w1 + w2 + w3)
 
 x = np.linspace(-10, 10, 1000)
 def gauss(x, μ, σ):
