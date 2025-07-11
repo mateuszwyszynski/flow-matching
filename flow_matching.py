@@ -61,7 +61,7 @@ pdfs_t1 = [gauss(x, mu1_final, sigma_final),
 mixture_t1 = sum(pdfs_t1) / 3
 ax.plot(x, mixture_t1 * 0.4 + 1.0,
         color="black", linewidth=3,
-        label="Mixture at t=1")
+        label="Mixture (t=1)")
 
 # Standard Normal at t=0 (σ=1)
 std_norm = gauss(x, 0, sigma_init)
