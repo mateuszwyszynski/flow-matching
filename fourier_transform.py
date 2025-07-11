@@ -6,12 +6,20 @@ st.title("Interactive Discrete Fourier Series")
 
 # Sidebar: controls for each harmonic component
 st.sidebar.header("Harmonic Components")
-num_components = st.sidebar.slider("Number of components", 1, 6, 3)
+num_components = st.sidebar.number_input("Number of components", min_value=1, max_value=6, value=3, step=1)
 components = []
-for i in range(num_components):
+for i in range(int(num_components)):
     st.sidebar.subheader(f"Component {i+1}")
-    amp = st.sidebar.slider(f"Amplitude A{i+1}", 0.0, 5.0, float(1.0), key=f"amp{i}")
-    freq = st.sidebar.slider(f"Frequency k{i+1} (Hz)", 0.0, 20.0, float(i+1), key=f"freq{i}")
+    amp = st.sidebar.slider(f"Amplitude A{i+1}", 0.0, 5.0, 1.0, key=f"amp{i}")
+    freq = st.sidebar.number_input(
+        f"Frequency k{i+1} (Hz)",
+        min_value=0.0,
+        max_value=100.0,
+        value=float(i+1),
+        step=0.1,
+        format="%.2f",
+        key=f"freq{i}"
+    )
     phase = st.sidebar.slider(f"Phase φ{i+1} (rad)", 0.0, 2*np.pi, 0.0, key=f"phase{i}")
     components.append((amp, freq, phase))
 
@@ -37,13 +45,13 @@ fft_mag = np.abs(fft_vals)[pos_mask] / N
 def plot():
     fig, axes = plt.subplots(2, 1, figsize=(8, 6), tight_layout=True)
     # Time-domain
-    axes[0].plot(t, signal, color='C0')
+    axes[0].plot(t, signal)
     axes[0].set_title('Time-Domain Signal')
     axes[0].set_xlabel('t (s)')
     axes[0].set_ylabel('Amplitude')
     
     # Frequency-domain
-    axes[1].stem(fft_freq, fft_mag, linefmt='C1-', markerfmt='C1o', basefmt='C1-')
+    axes[1].stem(fft_freq, fft_mag)
     axes[1].set_title('Magnitude Spectrum')
     axes[1].set_xlabel('Frequency (Hz)')
     axes[1].set_ylabel('Magnitude')
