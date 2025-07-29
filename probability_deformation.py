@@ -13,33 +13,52 @@ st.markdown(
     """
 )
 
-# Initialize session state for parameters
-def init_param(name, default):
-    if name not in st.session_state:
-        st.session_state[name] = default
-
-init_param('a', 0.5)
-init_param('b', 5.0)
-
 # Sidebar controls
 st.sidebar.header("Transform Parameters")
-a_slider = st.sidebar.slider('a (slider)', -2.0, 2.0, st.session_state['a'], 0.01)
-a_input  = st.sidebar.number_input('a (input)', -2.0, 2.0, st.session_state['a'], 0.01)
-if a_slider != st.session_state['a']:
-    st.session_state['a'] = a_slider
-elif a_input != st.session_state['a']:
-    st.session_state['a'] = a_input
 
-b_slider = st.sidebar.slider('b (slider)', 0.0, 20.0, st.session_state['b'], 0.1)
-b_input  = st.sidebar.number_input('b (input)', 0.0, 20.0, st.session_state['b'], 0.1)
-if b_slider != st.session_state['b']:
-    st.session_state['b'] = b_slider
-elif b_input != st.session_state['b']:
-    st.session_state['b'] = b_input
+# Initialize defaults on first run
+if 'a_slider' not in st.session_state:
+    st.session_state['a_slider'] = 0.1
+    st.session_state['a_input'] = 0.1
+if 'b_slider' not in st.session_state:
+    st.session_state['b_slider'] = 5.0
+    st.session_state['b_input'] = 5.0
 
-# Retrieve parameters
-a = st.session_state['a']
-b = st.session_state['b']
+# Callback functions
+def sync_a_from_slider():
+    st.session_state['a_input'] = st.session_state['a_slider']
+
+def sync_a_from_input():
+    st.session_state['a_slider'] = st.session_state['a_input']
+
+def sync_b_from_slider():
+    st.session_state['b_input'] = st.session_state['b_slider']
+
+def sync_b_from_input():
+    st.session_state['b_slider'] = st.session_state['b_input']
+
+# Widgets with callbacks
+a_slider = st.sidebar.slider(
+    'a (slider)', -2.0, 2.0, st.session_state['a_slider'], 0.01,
+    key='a_slider', on_change=sync_a_from_slider
+)
+a_input = st.sidebar.number_input(
+    'a (input)', -2.0, 2.0, st.session_state['a_input'], 0.01,
+    format="%.2f", key='a_input', on_change=sync_a_from_input
+)
+
+b_slider = st.sidebar.slider(
+    'b (slider)', 0.0, 20.0, st.session_state['b_slider'], 0.01,
+    key='b_slider', on_change=sync_b_from_slider
+)
+b_input = st.sidebar.number_input(
+    'b (input)', 0.0, 20.0, st.session_state['b_input'], 0.01,
+    format="%.2f", key='b_input', on_change=sync_b_from_input
+)
+
+# Final parameters
+a = st.session_state['a_slider']
+b = st.session_state['b_slider']
 
 # Warn if invertibility condition may fail
 if abs(a * b) >= 1:
