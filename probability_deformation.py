@@ -50,18 +50,28 @@ if abs(a * b) >= 1:
 x = np.linspace(-5, 5, 1000)
 orig_pdf = 1/np.sqrt(2 * np.pi) * np.exp(-0.5 * x**2)
 
-# Generate samples and transform
+# Generate samples and transform for histogram
 data = np.random.RandomState(0).normal(size=200000)
 y = data + a * np.sin(b * data)
 
 # Estimate transformed density via histogram
-hist, bins = np.histogram(y, bins=200, density=True)
-centers = 0.5 * (bins[:-1] + bins[1:])
+# hist, bins = np.histogram(y, bins=200, density=True)
+# centers = 0.5 * (bins[:-1] + bins[1:])
+
+# Compute analytic density via parametric plotting
+u = np.linspace(-5, 5, 1000)
+y_param = u + a * np.sin(b * u)
+pdf_param = (1/np.sqrt(2 * np.pi) * np.exp(-0.5 * u**2)) / (1 + a * b * np.cos(b * u))
+# Sort for a proper curve
+idx = np.argsort(y_param)
+y_param_sorted = y_param[idx]
+pdf_param_sorted = pdf_param[idx]
 
 # Plotting
 fig, ax = plt.subplots(figsize=(8, 4))
 ax.plot(x, orig_pdf, lw=2, label='Original N(0,1)')
-ax.plot(centers, hist, lw=2, label='Transformed')
+# ax.plot(centers, hist, lw=2, label='Transformed (histogram)')
+ax.plot(y_param_sorted, pdf_param_sorted, lw=2, linestyle='--', label='Transformed (analytic)')
 ax.set_xlabel('Value')
 ax.set_ylabel('Density')
 ax.legend()
