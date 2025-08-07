@@ -98,7 +98,7 @@ def draw(s_val, t_val):
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(x, orig_pdf, lw=2, label='Original N(0,1)')
     ax.plot(y_sorted, pdf_sorted, lw=2, linestyle='--', 
-            label=f'Transformed (a={s_val:.2f}, t={t_val:.2f})')
+            label=f'Transformed (s={s_val:.2f}, t={t_val:.2f})')
     ax.set_xlabel('Value')
     ax.set_ylabel('Density')
     ax.legend()
