@@ -2,7 +2,24 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.title("Conditional Flow Matching")
+st.title("Conditional Probability Paths")
+
+st.markdown(
+    """
+    This demo shows an optimal transport Gaussian conditional probability paths:
+
+    $$p_t(x|x_1) = \mathcal{N}(\mu_t(x_1), \sigma_t(x_1))$$
+
+    where:
+
+    $$\mu_t(x_1) = tx_1$$
+
+    $$\sigma_t(x_1) = 1 - (1 - \sigma_{min})t$$
+
+    and $\sigma_{min} \in \mathbb{R}$
+    is a minimum variance chosen when designing the conditional flow.
+    """
+)
 
 # Sidebar controls for final means & std
 st.sidebar.header("Gᵢ at t=1")
