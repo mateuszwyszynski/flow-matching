@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-st.set_page_config(page_title="Unimodal to Bimodal Transform Demo", layout="centered")
-st.title("Unimodal → Bimodal Transformation")
+st.set_page_config(page_title="Unimodal to Multimodal Probability Deformation Demo", layout="centered")
+st.title("Unimodal to Multimodal Probability Deformation")
 st.markdown(
     """
     This demo shows how a simple diffeomorphism 
