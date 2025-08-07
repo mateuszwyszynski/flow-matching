@@ -32,29 +32,42 @@ def sync_s_from_slider():
 def sync_s_from_input():
     st.session_state['s_slider'] = st.session_state['s_input']
 
-def sync_b_from_slider():
+def sync_t_from_slider():
     st.session_state['t_input'] = st.session_state['t_slider']
 
-def sync_b_from_input():
+def sync_t_from_input():
     st.session_state['t_slider'] = st.session_state['t_input']
 
 # Widgets with callbacks
 s_slider = st.sidebar.slider(
-    's (slider)', -2.0, 2.0, st.session_state['s_slider'], 0.01,
-    key='s_slider', on_change=sync_s_from_slider
+    's (slider)',
+    -2.0, 2.0,
+    key='s_slider',
+    step=0.01,
+    on_change=sync_s_from_slider,
 )
 s_input = st.sidebar.number_input(
-    's (input)', -2.0, 2.0, st.session_state['s_input'], 0.01,
-    format="%.2f", key='s_input', on_change=sync_s_from_input
+    's (input)',
+    -2.0, 2.0,
+    key='s_input',
+    step=0.01,
+    on_change=sync_s_from_slider,
 )
 
 t_slider = st.sidebar.slider(
-    't (slider)', 0.0, 20.0, st.session_state['t_slider'], 0.01,
-    key='t_slider', on_change=sync_b_from_slider
+    't (slider)',
+    0.0, 20.0,
+    key='t_slider',
+    step=0.01,
+    on_change=sync_t_from_slider,
 )
 t_input = st.sidebar.number_input(
-    't (input)', 0.0, 20.0, st.session_state['t_input'], 0.01,
-    format="%.2f", key='t_input', on_change=sync_b_from_input
+    't (input)',
+    0.0, 20.0,
+    key='t_input',
+    step = 0.01,
+    on_change=sync_t_from_input,
+    format="%.2f",
 )
 
 # Final parameters
