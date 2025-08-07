@@ -108,7 +108,7 @@ def draw(s_val, t_val):
 # Main logic: animate or static
 if play:
     for t_val in np.linspace(0.0, 1/s, 100):
-        if t_val == 1/a:
+        if t_val == 1/s:
             continue
         draw(s, t_val)
         time.sleep(0.05)
