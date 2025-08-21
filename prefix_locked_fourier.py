@@ -25,6 +25,9 @@ N_samp = st.sidebar.number_input("Sampling grid (N_samp)", 0, 500, 100, 1)
 st.sidebar.header("Prefix Lock")
 a = st.sidebar.slider("Lock prefix until a (seconds)", min_value=0.0, max_value=1.0, value=0.4, step=0.01)
 
+st.sidebar.header("Transition Period")
+transition = st.sidebar.slider("Smoothly unlock (seconds)", min_value=0.0, max_value=1.0, value=0.1, step=0.01)
+
 st.sidebar.header("New Signal (Without Lock)")
 
 A1_new = st.sidebar.number_input("$A^{new}_1$", 0.0, 5.0, 1.0, 0.1)
@@ -104,6 +107,15 @@ def idft_matrix(N: int) -> np.ndarray:
     return np.exp(1j * 2*np.pi * n * k / N) / N
 
 
+# Weight function: 1 in locked region, smoothly decays after a
+def weight_fn(t, a, transition=0.1):
+    w = np.zeros_like(t)
+    mask = (t > a) & (t < a + transition)
+    w[t >= a + transition] = 1.0
+    # smooth decay in [a, a+transition]
+    w[mask] = 0.5 * (1 - np.cos(np.pi * (t[mask]-a)/transition))
+    return w
+
 N_head = int(np.floor(a * N_samp)) 
 if N_head == N_samp:
     c_new = c0.copy()
@@ -113,12 +125,17 @@ else:
     N_head = int(np.floor(a * N_samp))
     A_head, A_tail = A[:N_head], A[N_head:]
 
-    # --- 3) Nullspace projector for prefix lock ---
     U, S, Vh = np.linalg.svd(A_head, full_matrices=True)
     tol = max(A_head.shape) * (S.max() if S.size else 0.0) * np.finfo(float).eps
     r = int(np.sum(S > tol))
     Nmat = Vh.conj().T[:, r:]
-    z = np.linalg.lstsq(A_tail @ Nmat, A_tail @ (c0_new - c0), rcond=None)[0]
+
+    weights = np.sqrt(weight_fn(t_samp, a, transition)[N_head:])
+    M = A_tail @ Nmat
+    d   = A_tail @ (c0_new - c0) 
+    dw   = weights * d
+
+    z = np.linalg.lstsq(M, dw, rcond=None)[0]
     c_new = c0 + Nmat @ z
 
     new_inference_signal_prefix_locked = np.fft.ifft(c_new, n = N_samp)
