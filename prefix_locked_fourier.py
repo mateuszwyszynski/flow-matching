@@ -4,168 +4,96 @@ import matplotlib.pyplot as plt
 
 st.title("Prefix-locked Fourier Deformation (keep t ≤ a, randomize t > a)")
 
-# ----- Controls -----
-st.sidebar.header("Previously Predicted Signal")
-
-A1 = st.sidebar.number_input("$A_1$", 0.0, 5.0, 1.0, 0.1)
-f1 = st.sidebar.number_input("$f_1$ (Hz)", 0.0, 100.0, 1.0, 0.1, format="%.2f")
-p1 = st.sidebar.number_input("$\phi_1$ (rad)", 0.0, float(2*np.pi), 0.0)
-
-A2 = st.sidebar.number_input("$A_2$", 0.0, 5.0, 0.8, 0.1)
-f2 = st.sidebar.number_input("$f_2$ (Hz)", 0.0, 100.0, 2.3, 0.1, format="%.2f")
-p2 = st.sidebar.number_input("$\phi_2$ (rad)", 0.0, float(2*np.pi), 0.0)
-
-A3 = st.sidebar.number_input("$A_3$", 0.0, 5.0, 0.6, 0.1)
-f3 = st.sidebar.number_input("$f_3$ (Hz)", 0.0, 100.0, 3.7, 0.1, format="%.2f")
-p3 = st.sidebar.number_input("$\phi_3$ (rad)", 0.0, float(2*np.pi), 0.0)
-
+# Controls
 st.sidebar.header("Grids")
-N_samp = st.sidebar.number_input("Sampling grid (N_samp)", 0, 500, 100, 1)
+N_prev= st.sidebar.number_input("$N_{prev}$", 0, 1000, 500, 1)
+N_next= st.sidebar.number_input("$N_{next}$", 0, 1000, 500, 1)
+
+st.sidebar.header("Control Frequency")
+control_freq = st.sidebar.slider("$f_c$ (Hz)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
 
 st.sidebar.header("Prefix Lock")
-a = st.sidebar.slider("Lock prefix until a (seconds)", min_value=0.0, max_value=1.0, value=0.4, step=0.01)
+a = st.sidebar.slider("Lock prefix until (%)", min_value=0.0, max_value=100.0, value=40.0, step=0.1)/100
 
 st.sidebar.header("Transition Period")
-transition = st.sidebar.slider("Smoothly unlock (seconds)", min_value=0.0, max_value=1.0, value=0.1, step=0.01)
+transition = st.sidebar.slider("Smoothly unlock (%)", min_value=0.0, max_value=100.0, value=10.0, step=0.1)/100
 
-st.sidebar.header("New Signal (Without Lock)")
+K = 20
+st.session_state.K = K
 
-A1_new = st.sidebar.number_input("$A^{new}_1$", 0.0, 5.0, 1.0, 0.1)
-f1_new = st.sidebar.number_input("$f^{new}_1$ (Hz)", 0.0, 100.0, 1.0, 0.1, format="%.2f")
-p1_new = st.sidebar.number_input("$\phi^{new}_1$ (rad)", 0.0, float(2*np.pi), 0.0)
+if "alpha_prev" not in st.session_state:
+    st.session_state.alpha_prev = np.random.randn(K)
+if "alpha_next" not in st.session_state:
+    st.session_state.alpha_next = np.random.randn(K)
 
-A2_new = st.sidebar.number_input("$A^{new}_2$", 0.0, 5.0, 0.8, 0.1)
-f2_new = st.sidebar.number_input("$f^{new}_2$ (Hz)", 0.0, 100.0, 2.3, 0.1, format="%.2f")
-p2_new = st.sidebar.number_input("$\phi^{new}_2$ (rad)", 0.0, float(2*np.pi), 0.0)
+c1, c2 = st.sidebar.columns(2)
+if c1.button("Resample prev $\alpha$"):
+    st.session_state.alpha_prev = np.random.randn(K)
+if c2.button("Resample next $\alpha$"):
+    st.session_state.alpha_next = np.random.randn(K)
 
-A3_new = st.sidebar.number_input("$A^{new}_3$", 0.0, 5.0, 0.6, 0.1)
-f3_new = st.sidebar.number_input("$f^{new}_3$ (Hz)", 0.0, 100.0, 3.7, 0.1, format="%.2f")
-p3_new = st.sidebar.number_input("$\phi^{new}_3$ (rad)", 0.0, float(2*np.pi), 0.0)
-
-
-amplitudes = np.array([A1, A2, A3])
-freqs = np.array([f1, f2, f3])
-phases = np.array([p1, p2, p3])
+alpha_prev = st.session_state.alpha_prev
+alpha_next = st.session_state.alpha_next
 
 
-amplitudes_new = np.array([A1_new, A2_new, A3_new])
-freqs_new = np.array([f1_new, f2_new, f3_new])
-phases_new = np.array([p1_new, p2_new, p3_new])
-
-def sample_signal(t, amplitudes, freqs, phases):
-    signal = 0
-    for (amplitude, freq, phase) in zip(amplitudes, freqs, phases):
-        signal += amplitude*np.sin(2*np.pi*freq*t + phase)
-
-    return signal
-
-t_samp = np.linspace(0, 1, N_samp, endpoint=False)
-previous_inference_signal = sample_signal(t_samp, amplitudes, freqs, phases)
-new_inference_signal = sample_signal(t_samp, amplitudes_new, freqs_new, phases_new)
+ks = np.arange(K)[None, :]
 
 
-def rfft_to_fft(Cr, N):
-    """Expand rFFT coeffs (length N//2+1) to full FFT (length N) with Hermitian symmetry."""
-    X = np.zeros(N, dtype=complex)
-    K = N // 2
-    X[0] = Cr[0]
-    if N % 2 == 0:
-        X[K] = Cr[K]                     # Nyquist (real)
-        X[1:K] = Cr[1:K]
-        X[-(K-1):] = np.conj(Cr[1:K][::-1])
-    else:
-        X[1:K+1] = Cr[1:K+1]
-        X[-K:] = np.conj(Cr[1:K+1][::-1])
-    return X
+n_prev = np.arange(N_prev)[:, None]
 
-def fft_to_rfft(X):
-    """Compress full FFT (length N) back to rFFT (length N//2+1)."""
-    N = len(X)
-    K = N // 2
-    Cr = np.empty(K + 1, dtype=complex)
-    Cr[0] = X[0]
-    if N % 2 == 0:
-        Cr[1:K] = X[1:K]
-        Cr[K] = X[K]
-    else:
-        Cr[1:K+1] = X[1:K+1]
-    return Cr
+Phi_prev = np.sqrt(2.0/N_prev) * np.cos(np.pi/N_prev * (n_prev + 0.5) * ks)
+Phi_prev[:, 0] = 1.0/np.sqrt(N_prev)
+
+t_grid_prev = np.linspace(0, N_prev / control_freq, N_prev, endpoint=False)
+x_prev = Phi_prev @ alpha_prev
 
 
-# FFT from samples
-cr0 = np.fft.rfft(previous_inference_signal)
-c0 = rfft_to_fft(cr0, N_samp)
+n_next = np.arange(N_next)[:, None]
 
-cr0_new = np.fft.rfft(new_inference_signal)
-c0_new = rfft_to_fft(cr0_new, N_samp)
+Phi_next = np.sqrt(2.0/N_next) * np.cos(np.pi/N_next * (n_next + 0.5) * ks)
+Phi_next[:, 0] = 1.0/np.sqrt(N_next)
 
-
-def idft_matrix(N: int) -> np.ndarray:
-    # IDFT matrix so that x = A @ c equals np.fft.ifft(c)
-    n = np.arange(N)[:, None]
-    k = np.arange(N)[None, :]
-    return np.exp(1j * 2*np.pi * n * k / N) / N
+t_grid_next = np.linspace(0, N_next / control_freq, N_next, endpoint=False)
+x_next = Phi_next @ alpha_next
 
 
 # Weight function: 1 in locked region, smoothly decays after a
-def weight_fn(t, a, transition=0.1):
-    w = np.zeros_like(t)
-    mask = (t > a) & (t < a + transition)
-    w[t >= a + transition] = 1.0
-    # smooth decay in [a, a+transition]
-    w[mask] = 0.5 * (1 - np.cos(np.pi * (t[mask]-a)/transition))
+def weight_fn(N, a, transition=0.1):
+    w = np.ones(N)
+    tnorm = np.linspace(0, 1, N, endpoint=False)
+    mask = (tnorm > a) & (tnorm < a + transition)
+    w[tnorm >= a + transition] = 0.0
+    w[mask] = 0.5 * (1 + np.cos(np.pi * (tnorm[mask] - a) / transition))
     return w
 
-N_head = int(np.floor(a * N_samp)) 
-if N_head == N_samp:
-    c_new = c0
-else:
-    A = idft_matrix(N_samp)
-    N_head = int(np.floor(a * N_samp))
-    A_head, A_tail = A[:N_head], A[N_head:]
+common_N = min(N_next, N_prev)
+weights = np.sqrt(weight_fn(common_N, a, transition))
+x_next_locked = np.concat([
+    weights*x_prev[:common_N] + (1-weights)*x_next[:common_N],
+    x_next[common_N:]
+])
 
-    U, S, Vh = np.linalg.svd(A_head, full_matrices=True)
-    tol = max(A_head.shape) * (S.max() if S.size else 0.0) * np.finfo(float).eps
-    r = int(np.sum(S > tol))
-    Nmat = Vh.conj().T[:, r:]
-
-    weights = np.sqrt(weight_fn(t_samp, a, transition)[N_head:])
-    M = A_tail @ Nmat
-    d   = A_tail @ (c0_new - c0) 
-    dw   = weights * d
-
-    z = np.linalg.lstsq(M, dw, rcond=None)[0]
-    c_new = c0 + Nmat @ z
-
-new_inference_signal_prefix_locked = np.fft.ifft(c_new, n = N_samp)
-new_inference_signal_prefix_locked = np.real_if_close(new_inference_signal_prefix_locked, tol=1000)
-
-# Plots
-fft_freq = np.fft.fftfreq(N_samp, d=1/N_samp)
-pos_mask = fft_freq >= 0
-fft_freq_pos = fft_freq[pos_mask]
-
-fft_mag_core = np.abs(c0)[pos_mask] / N_samp
-fft_mag_new  = np.abs(c_new)[pos_mask] / N_samp
+alpha_next_locked = Phi_next.T @ x_next_locked
 
 def plot():
     fig, axes = plt.subplots(2, 1, figsize=(9, 7), tight_layout=True)
 
     # Time domain
-    axes[0].plot(t_samp, previous_inference_signal, label='Previous inference', linewidth=2)
-    axes[0].plot(t_samp, new_inference_signal, label='New inference', linestyle='--')
-    axes[0].plot(t_samp, new_inference_signal_prefix_locked, label='New inference with prefix-locked', linestyle='--')
-    axes[0].axvspan(0, a, alpha=0.12, label='Locked region')
+    axes[0].plot(t_grid_prev, x_prev, label='Previous inference', linewidth=2)
+    axes[0].plot(t_grid_next, x_next, label='Next inference', linewidth=2)
+    axes[0].plot(t_grid_next, x_next_locked, label='Next prefix-locked', linestyle='--')
+    axes[0].axvspan(0, a*max(np.max(t_grid_next), np.max(t_grid_next)), alpha=0.12, label='Locked region')
     axes[0].set_title('Time-Domain Signal')
     axes[0].set_xlabel('t (s)')
     axes[0].set_ylabel('Amplitude')
-    axes[0].legend(loc='lower left')
+    axes[0].legend()
 
     # Spectrum
-    axes[1].stem(fft_freq_pos, fft_mag_core, label='Original |c|/N', basefmt=" ")
-    axes[1].stem(fft_freq_pos, fft_mag_new, label='New |c|/N', linefmt='C1-', markerfmt='C1o', basefmt=" ")
-    axes[1].set_title('Magnitude Spectrum (positive freqs)')
-    axes[1].set_xlabel('Frequency (Hz)')
+    axes[1].stem(range(K), alpha_prev, label='Prev inference', basefmt=" ", linefmt="C0-")
+    axes[1].stem(range(K), alpha_next, label='Next inference', basefmt=" ", linefmt="C1-")
+    axes[1].stem(range(K), alpha_next_locked, label='Next inference locked', basefmt=" ", linefmt="C2-")
+    axes[1].set_title('Inferred DCT coefficients')
+    axes[1].set_xlabel('Component')
     axes[1].set_ylabel('Magnitude')
     axes[1].legend(loc='upper right')
 
