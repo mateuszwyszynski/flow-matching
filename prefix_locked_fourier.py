@@ -118,8 +118,7 @@ def weight_fn(t, a, transition=0.1):
 
 N_head = int(np.floor(a * N_samp)) 
 if N_head == N_samp:
-    c_new = c0.copy()
-    x_new = previous_inference_signal.copy()
+    c_new = c0
 else:
     A = idft_matrix(N_samp)
     N_head = int(np.floor(a * N_samp))
@@ -138,8 +137,8 @@ else:
     z = np.linalg.lstsq(M, dw, rcond=None)[0]
     c_new = c0 + Nmat @ z
 
-    new_inference_signal_prefix_locked = np.fft.ifft(c_new, n = N_samp)
-    new_inference_signal_prefix_locked = np.real_if_close(new_inference_signal_prefix_locked, tol=1000)
+new_inference_signal_prefix_locked = np.fft.ifft(c_new, n = N_samp)
+new_inference_signal_prefix_locked = np.real_if_close(new_inference_signal_prefix_locked, tol=1000)
 
 # Plots
 fft_freq = np.fft.fftfreq(N_samp, d=1/N_samp)
