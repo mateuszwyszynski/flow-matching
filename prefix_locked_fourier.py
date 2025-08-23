@@ -10,13 +10,13 @@ N_shape = st.sidebar.number_input("$N_{shape}$", 0, 2000, 1000, 1)
 
 st.sidebar.header("Inferred times")
 T_prev = st.sidebar.number_input("$T_{prev}$", 0.0, 15.0, 10.0, 0.01)
-T_next = st.sidebar.number_input("$T_{next}$", 0.0, 15.0, 10.0, 0.01)
+T_next = st.sidebar.number_input("$T_{next}$", 0.0, 15.0, 15.0, 0.01)
 
 st.sidebar.header("Control Frequency")
 control_freq = st.sidebar.slider("$f_c$ (Hz)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
 
 st.sidebar.header("Inference latency")
-t_infer = st.sidebar.slider("Inference latency (s)", min_value=0.0, max_value=5.0, value=1.0, step=0.01)
+t_infer = st.sidebar.slider("Inference latency (s)", min_value=0.0, max_value=5.0, value=0.3, step=0.01)
 
 tau_locked = t_infer / T_prev
 
