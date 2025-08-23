@@ -86,6 +86,11 @@ x_next_locked = Phi_next @ alpha_next_locked
 t_locked = tau_locked * T_prev
 t_exec_start = tau_locked * T_next
 
+ind_locked = np.where(t_grid_prev > t_locked)[0][0]
+ind_exec_start = np.where(t_grid_next > t_exec_start)[0][0]
+last_value_locked = x_prev[ind_locked]
+value_exec_start = x_next_locked[ind_exec_start]
+
 def plot():
     fig, axes = plt.subplots(3, 1, figsize=(12, 10), tight_layout=True)
 
@@ -93,6 +98,7 @@ def plot():
     axes[0].plot(t_grid_prev, x_prev, label='Previous inference', linewidth=2)
     axes[0].plot(t_grid_next, x_next, label='Next inference', linewidth=2)
     axes[0].plot(t_grid_next, x_next_locked, label='Next prefix-locked', linestyle='--')
+    axes[0].plot(np.array([t_locked, t_exec_start]), np.array([last_value_locked, value_exec_start]))
     axes[0].axvspan(0, t_locked, alpha=0.12, label='Locked region')
     axes[0].axvspan(t_locked, t_exec_start, alpha=0.2, label='Ignored for execution')
     axes[0].set_title('Time-Domain Signal')
