@@ -2,7 +2,25 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.title("Prefix-locked Fourier Deformation (keep t ≤ a, randomize t > a)")
+st.title("Prefix-locked Fourier Guidance.")
+st.markdown(
+    """
+    This demo shows how newly inferred action plan, represented as DCT coefficients,
+    can be adjusted to preserve the prefix of the execution plan from the previous inference.
+
+    The mapping is done in the normalised time domain, directly on the DCT coefficients.
+    The former allows guidance only on DCT coefficients, i.e., independently of the predicted task completion time.
+
+     - Inference latency determines the part of the signal which should be preserved.
+     - To allow analysis in the normalised time domain,
+    we adjust the start time of the execution for the new plan
+    so that it matches the end of the locked prefix.
+    This is represented with the red segment inside the _Ignored for execution_ area.
+    In theory the segment should be perfectly horizontal.
+    In practice there might be some differences due to time discretisation,
+    but the important fact is that the levels match for the underlying continuous signals.
+    """
+)
 
 # Controls
 st.sidebar.header("Shape grid")
