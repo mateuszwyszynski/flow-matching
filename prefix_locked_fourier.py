@@ -5,18 +5,27 @@ import matplotlib.pyplot as plt
 st.title("Prefix-locked Fourier Deformation (keep t ≤ a, randomize t > a)")
 
 # Controls
-st.sidebar.header("Grids")
-N_prev= st.sidebar.number_input("$N_{prev}$", 0, 1000, 500, 1)
-N_next= st.sidebar.number_input("$N_{next}$", 0, 1000, 500, 1)
+st.sidebar.header("Shape grid")
+N_shape = st.sidebar.number_input("$N_{shape}$", 0, 2000, 1000, 1)
+
+st.sidebar.header("Inferred times")
+T_prev = st.sidebar.number_input("$T_{prev}$", 0.0, 15.0, 10.0, 0.01)
+T_next = st.sidebar.number_input("$T_{next}$", 0.0, 15.0, 10.0, 0.01)
 
 st.sidebar.header("Control Frequency")
 control_freq = st.sidebar.slider("$f_c$ (Hz)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
 
-st.sidebar.header("Prefix Lock")
-a = st.sidebar.slider("Lock prefix until (%)", min_value=0.0, max_value=100.0, value=40.0, step=0.1)/100
+st.sidebar.header("Inference latency")
+t_infer = st.sidebar.slider("Inference latency (s)", min_value=0.0, max_value=5.0, value=1.0, step=0.01)
 
 st.sidebar.header("Transition Period")
-transition = st.sidebar.slider("Smoothly unlock (%)", min_value=0.0, max_value=100.0, value=10.0, step=0.1)/100
+t_transition = st.sidebar.slider("Transition period (s)", min_value=0.0, max_value=5.0, value=1.0, step=0.01)
+
+tau_locked = t_infer / T_prev
+tau_transition = t_transition / T_prev
+
+N_prev = int(T_prev * control_freq)
+N_next = int(T_next * control_freq)
 
 K = 20
 st.session_state.K = K
@@ -36,66 +45,80 @@ alpha_prev = st.session_state.alpha_prev
 alpha_next = st.session_state.alpha_next
 
 
-ks = np.arange(K)[None, :]
+def dct_matrix(K, N, N_scale: int = None):
+    if N_scale is None:
+        N_scale = N
+    n = np.arange(N)[:, None]
+    ks = np.arange(K)[None, :]
 
+    Phi = np.sqrt(2.0/N_scale) * np.cos(np.pi/N * (n + 0.5) * ks)
+    Phi[:, 0] = 1.0/np.sqrt(N_scale)
 
-n_prev = np.arange(N_prev)[:, None]
+    return Phi
 
-Phi_prev = np.sqrt(2.0/N_prev) * np.cos(np.pi/N_prev * (n_prev + 0.5) * ks)
-Phi_prev[:, 0] = 1.0/np.sqrt(N_prev)
+t_grid_prev = np.linspace(0, T_prev, N_prev, endpoint=False)
+x_prev = dct_matrix(K, N_prev, N_scale=N_shape) @ alpha_prev
 
-t_grid_prev = np.linspace(0, N_prev / control_freq, N_prev, endpoint=False)
-x_prev = Phi_prev @ alpha_prev
-
-
-n_next = np.arange(N_next)[:, None]
-
-Phi_next = np.sqrt(2.0/N_next) * np.cos(np.pi/N_next * (n_next + 0.5) * ks)
-Phi_next[:, 0] = 1.0/np.sqrt(N_next)
-
-t_grid_next = np.linspace(0, N_next / control_freq, N_next, endpoint=False)
+t_grid_next = np.linspace(0, T_next, N_next, endpoint=False)
+Phi_next = dct_matrix(K, N_next, N_scale=N_shape)
 x_next = Phi_next @ alpha_next
 
 
 # Weight function: 1 in locked region, smoothly decays after a
-def weight_fn(N, a, transition=0.1):
+def weight_fn(N, tau_locked, tau_transition=0.1):
     w = np.ones(N)
     tnorm = np.linspace(0, 1, N, endpoint=False)
-    mask = (tnorm > a) & (tnorm < a + transition)
-    w[tnorm >= a + transition] = 0.0
-    w[mask] = 0.5 * (1 + np.cos(np.pi * (tnorm[mask] - a) / transition))
+    mask = (tnorm > tau_locked) & (tnorm < tau_locked + tau_transition)
+    w[tnorm >= tau_locked + tau_transition] = 0.0
+    w[mask] = 0.5 * (1 + np.cos(np.pi * (tnorm[mask] - tau_locked) / tau_transition))
     return w
 
-common_N = min(N_next, N_prev)
-weights = np.sqrt(weight_fn(common_N, a, transition))
-x_next_locked = np.concat([
-    weights*x_prev[:common_N] + (1-weights)*x_next[:common_N],
-    x_next[common_N:]
-])
+weights = weight_fn(N_shape, tau_locked, tau_transition)
 
-alpha_next_locked = Phi_next.T @ x_next_locked
+Phi_shape = dct_matrix(K, N_shape)
+x_prev_normalised_time = Phi_shape @ alpha_prev
+x_next_normalised_time = Phi_shape @ alpha_next
+
+x_next_locked_normalised_time = weights*x_prev_normalised_time + (1-weights)*x_next_normalised_time
+
+alpha_next_locked = Phi_shape.T @ x_next_locked_normalised_time
+x_next_locked_normalised_time_recon = Phi_shape @ alpha_next_locked
+x_next_locked = Phi_next @ alpha_next_locked
+t_exec_start = tau_locked * T_next
 
 def plot():
-    fig, axes = plt.subplots(2, 1, figsize=(9, 7), tight_layout=True)
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), tight_layout=True)
 
     # Time domain
     axes[0].plot(t_grid_prev, x_prev, label='Previous inference', linewidth=2)
     axes[0].plot(t_grid_next, x_next, label='Next inference', linewidth=2)
     axes[0].plot(t_grid_next, x_next_locked, label='Next prefix-locked', linestyle='--')
-    axes[0].axvspan(0, a*max(np.max(t_grid_next), np.max(t_grid_next)), alpha=0.12, label='Locked region')
+    axes[0].axvspan(0, t_exec_start, alpha=0.12, label='Locked region')
     axes[0].set_title('Time-Domain Signal')
     axes[0].set_xlabel('t (s)')
-    axes[0].set_ylabel('Amplitude')
+    axes[0].set_ylabel('Position x')
     axes[0].legend()
 
+    # Normalised time domain
+    tau_grid = np.linspace(0, 1, N_shape, endpoint=False)
+    axes[1].plot(tau_grid, x_prev_normalised_time, label='Previous inference', linewidth=2)
+    axes[1].plot(tau_grid, x_next_normalised_time, label='Next inference', linewidth=2)
+    axes[1].plot(tau_grid, x_next_locked_normalised_time, label='Next prefix-locked', linestyle='--')
+    axes[1].plot(tau_grid, x_next_locked_normalised_time_recon, label='Next prefix-locked reconstructed', linestyle='--')
+    axes[1].axvspan(0, tau_locked, alpha=0.12, label='Locked region')
+    axes[1].set_title('Normalised Time-Domain Signal')
+    axes[1].set_xlabel('tau')
+    axes[1].set_ylabel('Position x')
+    axes[1].legend()
+
     # Spectrum
-    axes[1].stem(range(K), alpha_prev, label='Prev inference', basefmt=" ", linefmt="C0-")
-    axes[1].stem(range(K), alpha_next, label='Next inference', basefmt=" ", linefmt="C1-")
-    axes[1].stem(range(K), alpha_next_locked, label='Next inference locked', basefmt=" ", linefmt="C2-")
-    axes[1].set_title('Inferred DCT coefficients')
-    axes[1].set_xlabel('Component')
-    axes[1].set_ylabel('Magnitude')
-    axes[1].legend(loc='upper right')
+    axes[2].stem(range(K), alpha_prev, label='Prev inference', basefmt=" ", linefmt="C0-")
+    axes[2].stem(range(K), alpha_next, label='Next inference', basefmt=" ", linefmt="C1-")
+    axes[2].stem(range(K), alpha_next_locked, label='Next inference locked', basefmt=" ", linefmt="C2-")
+    axes[2].set_title('Inferred DCT coefficients')
+    axes[2].set_xlabel('Component')
+    axes[2].set_ylabel('Magnitude')
+    axes[2].legend(loc='upper right')
 
     return fig
 
