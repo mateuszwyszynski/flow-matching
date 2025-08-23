@@ -18,11 +18,7 @@ control_freq = st.sidebar.slider("$f_c$ (Hz)", min_value=0.0, max_value=100.0, v
 st.sidebar.header("Inference latency")
 t_infer = st.sidebar.slider("Inference latency (s)", min_value=0.0, max_value=5.0, value=1.0, step=0.01)
 
-st.sidebar.header("Transition Period")
-t_transition = st.sidebar.slider("Transition period (s)", min_value=0.0, max_value=5.0, value=1.0, step=0.01)
-
 tau_locked = t_infer / T_prev
-tau_transition = t_transition / T_prev
 
 N_prev = int(T_prev * control_freq)
 N_next = int(T_next * control_freq)
@@ -56,33 +52,36 @@ def dct_matrix(K, N, N_scale: int = None):
 
     return Phi
 
+
 t_grid_prev = np.linspace(0, T_prev, N_prev, endpoint=False)
 x_prev = dct_matrix(K, N_prev, N_scale=N_shape) @ alpha_prev
+
 
 t_grid_next = np.linspace(0, T_next, N_next, endpoint=False)
 Phi_next = dct_matrix(K, N_next, N_scale=N_shape)
 x_next = Phi_next @ alpha_next
 
 
-# Weight function: 1 in locked region, smoothly decays after a
-def weight_fn(N, tau_locked, tau_transition=0.1):
-    w = np.ones(N)
-    tnorm = np.linspace(0, 1, N, endpoint=False)
-    mask = (tnorm > tau_locked) & (tnorm < tau_locked + tau_transition)
-    w[tnorm >= tau_locked + tau_transition] = 0.0
-    w[mask] = 0.5 * (1 + np.cos(np.pi * (tnorm[mask] - tau_locked) / tau_transition))
-    return w
-
-weights = weight_fn(N_shape, tau_locked, tau_transition)
-
 Phi_shape = dct_matrix(K, N_shape)
+
+H = int(tau_locked * N_shape)
+A = Phi_shape
+Ah, At = A[:H], A[H:]
+
+G = At.T @ At
+C = Ah
+rhs = np.concatenate([At.T @ (At @ alpha_next), C @ alpha_prev])
+KKT = np.block([[G, C.T],
+                [C, np.zeros((H, H))]])
+sol = np.linalg.solve(KKT, rhs)
+alpha_next_locked = sol[:K]
+
+
 x_prev_normalised_time = Phi_shape @ alpha_prev
 x_next_normalised_time = Phi_shape @ alpha_next
+x_next_locked_normalised_time = Phi_shape @ alpha_next_locked
 
-x_next_locked_normalised_time = weights*x_prev_normalised_time + (1-weights)*x_next_normalised_time
 
-alpha_next_locked = Phi_shape.T @ x_next_locked_normalised_time
-x_next_locked_normalised_time_recon = Phi_shape @ alpha_next_locked
 x_next_locked = Phi_next @ alpha_next_locked
 t_exec_start = tau_locked * T_next
 
@@ -104,7 +103,6 @@ def plot():
     axes[1].plot(tau_grid, x_prev_normalised_time, label='Previous inference', linewidth=2)
     axes[1].plot(tau_grid, x_next_normalised_time, label='Next inference', linewidth=2)
     axes[1].plot(tau_grid, x_next_locked_normalised_time, label='Next prefix-locked', linestyle='--')
-    axes[1].plot(tau_grid, x_next_locked_normalised_time_recon, label='Next prefix-locked reconstructed', linestyle='--')
     axes[1].axvspan(0, tau_locked, alpha=0.12, label='Locked region')
     axes[1].set_title('Normalised Time-Domain Signal')
     axes[1].set_xlabel('tau')
