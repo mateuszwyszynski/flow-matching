@@ -83,6 +83,7 @@ x_next_locked_normalised_time = Phi_shape @ alpha_next_locked
 
 
 x_next_locked = Phi_next @ alpha_next_locked
+t_locked = tau_locked * T_prev
 t_exec_start = tau_locked * T_next
 
 def plot():
@@ -92,7 +93,8 @@ def plot():
     axes[0].plot(t_grid_prev, x_prev, label='Previous inference', linewidth=2)
     axes[0].plot(t_grid_next, x_next, label='Next inference', linewidth=2)
     axes[0].plot(t_grid_next, x_next_locked, label='Next prefix-locked', linestyle='--')
-    axes[0].axvspan(0, t_exec_start, alpha=0.12, label='Locked region')
+    axes[0].axvspan(0, t_locked, alpha=0.12, label='Locked region')
+    axes[0].axvspan(t_locked, t_exec_start, alpha=0.2, label='Ignored for execution')
     axes[0].set_title('Time-Domain Signal')
     axes[0].set_xlabel('t (s)')
     axes[0].set_ylabel('Position x')
