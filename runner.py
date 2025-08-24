@@ -64,7 +64,6 @@ class EnvConfig:
 @dataclass
 class EpisodeConfig:
     seed: int = 0
-    max_seconds: float = 30.0
     save_to: str = "./episodes"
 
 
@@ -262,9 +261,8 @@ class EpisodeRecord:
 
 def run_human_episode(env: PositionControl1DEnv, epi_cfg: EpisodeConfig) -> EpisodeRecord:
     H, W = env.cfg.height, env.cfg.width
-    Ncap = int(round(epi_cfg.max_seconds * env.cfg.fc))
-    images = np.empty((Ncap, H, W), dtype=np.uint8)
-    ys = np.empty((Ncap,), dtype=np.float32)
+    images = []
+    ys = []
 
     screen = pygame.display.set_mode((env.cfg.width, env.cfg.height))
     pygame.display.set_caption("PositionControl1D Runner: UP/DOWN to move | ESC end | Q quit")
@@ -274,25 +272,21 @@ def run_human_episode(env: PositionControl1DEnv, epi_cfg: EpisodeConfig) -> Epis
 
     # Warm start render
     frame = env.render("rgb_array")
-    images[0] = frame
-    ys[0] = env.y
+    images.append(frame)
+    ys.append(env.y)
 
     i = 1
     reached = False
-    while i < Ncap and not reached:
+    while not reached:
         start = time.time()
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    images = images[:i]
-                    ys = ys[:i]
-                    reached = True  # treat as end
+                    reached = True
                     break
                 if event.key == pygame.K_q:
                     quit_all = True
-                    images = images[:i]
-                    ys = ys[:i]
                     reached = True
                     break
 
@@ -301,8 +295,8 @@ def run_human_episode(env: PositionControl1DEnv, epi_cfg: EpisodeConfig) -> Epis
 
         # Update one tick from keyboard state
         frame, reached = env.step_from_keyboard()
-        images[i] = frame
-        ys[i] = env.y
+        images.append(frame)
+        ys.append(env.y)
 
         # Blit to display for human feedback (optional)
         pygame.surfarray.blit_array(screen, np.transpose(np.repeat(frame[..., None], 3, axis=2), (1, 0, 2)))
@@ -317,8 +311,8 @@ def run_human_episode(env: PositionControl1DEnv, epi_cfg: EpisodeConfig) -> Epis
         if quit_all:
             break
 
-    images = images[:i]
-    ys = ys[:i]
+    images = np.array(images)
+    ys = np.array(ys)
 
     meta = {
         "seed": epi_cfg.seed,
@@ -353,14 +347,13 @@ def save_episode(ep: EpisodeRecord, path: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--max-seconds", type=float, default=30.0)
     parser.add_argument("--fc", type=float, default=50.0)
     parser.add_argument("--delta-per-sec", type=float, default=0.7)
     parser.add_argument("--save-to", type=str, default="./episodes")
     args = parser.parse_args()
 
     cfg = EnvConfig(fc=args.fc, delta_per_sec=args.delta_per_sec)
-    epi_cfg = EpisodeConfig(seed=args.seed, max_seconds=args.max_seconds, save_to=args.save_to)
+    epi_cfg = EpisodeConfig(seed=args.seed, save_to=args.save_to)
 
     env = PositionControl1DEnv(cfg, seed=epi_cfg.seed)
     env.reset(seed=epi_cfg.seed)
