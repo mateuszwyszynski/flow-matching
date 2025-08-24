@@ -1,17 +1,17 @@
 """
-Position-Control 1D Runner (PyGame)
+Control 1D Runner (PyGame)
 -----------------------------------
 A minimal image-based environment with keyboard control for up/down motion.
 **Variant**:
-- Static world; agent moves left→right at constant speed.
-- 3–5 static obstacle columns with vertical gaps.
+- Static world; agent moves from left to right at constant speed.
+- 2-4 static obstacle columns with vertical gaps.
 - A **target column** placed after the last obstacle with its **own vertical gap**; you must cross it at the right level to finish.
 - UP/DOWN apply ±delta per tick on y (clamped to [0,1]).
 - Freeze-on-block: if a forward step would put the agent inside a column (obstacle or target) while outside its gap, x does not advance this tick.
 - Logging: per-tick (image, y_position) plus metadata saved to .npz after each episode.
 
 Dependencies: pygame, numpy
-Run: python position_control_1d_env.py --seed 123 --max-seconds 30 --fc 50 --delta-per-sec 0.7 --save-to ./episodes
+Run: python runner.py --seed 123
 Exit: ESC to end episode early, Q to quit.
 """
 from __future__ import annotations
@@ -64,7 +64,7 @@ class EnvConfig:
 @dataclass
 class EpisodeConfig:
     seed: int = 0
-    max_seconds: float = 30.0             # safety cap; episode ends earlier if target is reached
+    max_seconds: float = 30.0
     save_to: str = "./episodes"
 
 
