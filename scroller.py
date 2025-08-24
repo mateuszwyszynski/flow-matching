@@ -32,7 +32,7 @@ except Exception:
 # ----------------------------- Config dataclass ----------------------------- #
 @dataclass
 class EnvConfig:
-    width: int = 160
+    width: int = 240
     height: int = 84
     fc: float = 50.0                      # control frequency (Hz)
     pixels_per_second: float = 60.0       # obstacle scroll speed (px/s)
@@ -41,7 +41,7 @@ class EnvConfig:
     agent_radius_px: int = 3
     obstacle_min_gap_px: int = 22         # vertical gap between bars (must exceed 2*agent_radius_px)
     obstacle_width_px: int = 18
-    obstacle_spawn_interval_s: Tuple[float, float] = (0.8, 1.6)  # randomized spawn interval
+    obstacle_spawn_interval_s: Tuple[float, float] = (1.3, 1.6)  # randomized spawn interval
     bg_color: int = 0                     # grayscale 0..255
     agent_color: int = 200
     obstacle_color: int = 120
