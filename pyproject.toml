@@ -7,4 +7,5 @@ requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.3.2",
     "pygame>=2.6.1",
+    "torchcfm>=1.0.7",
 ]
