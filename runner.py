@@ -91,6 +91,43 @@ class PositionControl1DEnv:
         obs = self.render("rgb_array")
         return obs
 
+
+    def _clamp_y_inside_gaps_given_x(self, y_px: int, ax: int, y_prev_px: int) -> int:
+        """If agent's x is inside any column, clamp y to the intersection of their gaps.
+        Falls back to previous y if the intersection is empty."""
+        intervals = []
+
+        # obstacles
+        for x, gap_y in self.obstacles:
+            left = int(x)
+            right = left + self.cfg.obstacle_width_px
+            if left <= ax <= right:
+                low, high = self._allowed_y_interval_for_gap(gap_y, self.cfg.obstacle_min_gap_px)
+                intervals.append((low, high))
+
+        # target
+        left_t = int(self.target_x_px)
+        right_t = left_t + self.cfg.target_width_px
+        if left_t <= ax <= right_t:
+            low, high = self._allowed_y_interval_for_gap(self.target_gap_center_px, self.cfg.target_gap_px)
+            intervals.append((low, high))
+
+        # if not in any column → free vertical movement (screen clamp happens elsewhere)
+        if not intervals:
+            return y_px
+
+        # intersection of all intervals
+        low = max(lo for lo, hi in intervals)
+        high = min(hi for lo, hi in intervals)
+
+        if low <= high:
+            # clamp into the feasible intersection
+            return int(np.clip(y_px, low, high))
+        else:
+            # degenerate case: no intersection → keep previous y (no vertical motion)
+            return y_prev_px
+
+
     def step_from_keyboard(self) -> Tuple[np.ndarray, bool]:
         """Poll keys, update agent, advance one tick. Returns (obs, reached_target)."""
         self._handle_events_nonblocking()
@@ -101,9 +138,14 @@ class PositionControl1DEnv:
         elif keys[pygame.K_DOWN] and not keys[pygame.K_UP]:
             dy = -self.cfg.delta_per_sec * self.dt
         # apply vertical motion and clamp to [0,1] with pixel margin
+        y_prev_px = self._y_to_px(self.y)
+        
         self.y = float(np.clip(self.y + dy, 0.0, 1.0))
         y_px = self._y_to_px(self.y)
         y_px = int(np.clip(y_px, self.cfg.clamp_margin_px, self.cfg.height-1-self.cfg.clamp_margin_px))
+
+        ax = int(round(self.x_px))
+        y_px = self._clamp_y_inside_gaps_given_x(y_px, ax, y_prev_px)
         self.y = self._px_to_y(y_px)
 
         # Constant forward motion with **freeze-on-block** semantics
